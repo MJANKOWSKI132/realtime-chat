@@ -7,8 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const usernameSection = document.getElementById("username-section");
     const chatSection = document.getElementById("chat-section");
     const usersSection = document.getElementById("users");
+    const publicChatButton = document.getElementById("public-chat-btn");
+    const chatWithDiv = document.getElementById("chat-with");
+
+    let publicChatEnabled = true;
 
     const addMessage = messageBody => {
+        if (!publicChatEnabled)
+            return;
         const newMessageContainer = document.createElement("div");
         newMessageContainer.classList.add("message-container");
 
@@ -53,6 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const newUserContainer = document.createElement("div");
         newUserContainer.classList.add("user");
         newUserContainer.setAttribute("id", `user${user.userId}`)
+        newUserContainer.addEventListener('click', e => {
+            messageContainer.innerHTML = '';
+            chatWithDiv.textContent = user.username;
+            publicChatEnabled = false;
+        })
         newUserContainer.textContent = user.username;
         usersSection.appendChild(newUserContainer);
     };
@@ -71,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const onMessageReceived = payload => {
             const payloadBody = JSON.parse(payload.body);
             const messageBody = payloadBody.body;
-            console.log("messageBody: ", messageBody);
             if (messageBody.type === "NEW_MESSAGE") {
                 addMessage(payloadBody.body);
             } else if (messageBody.type === "JOIN") {
@@ -100,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         stompClient.connect({}, onConnected, onError);
 
-        sendMessageButton.addEventListener('click', e => {
+        const messageFunc = () => {
             if (!messageInput || messageInput.value === "") {
                 window.alert("Message cannot be empty!");
                 return;
@@ -111,6 +121,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
             messageInput.value = "";
+        };
+
+        sendMessageButton.addEventListener('click', _ => {
+            messageFunc();
+        });
+
+        messageInput.addEventListener("keydown", event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                messageFunc();
+            }
         });
     };
 
@@ -127,6 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
             window.alert(error.message);
         }
     };
+
+    publicChatButton.addEventListener("click", _ => {
+        if (publicChatEnabled)
+            return;
+        messageContainer.innerHTML = "";
+        chatWithDiv.textContent = "Public chat";
+        publicChatEnabled = true;
+        getPreviousMessages();
+    });
 
     const getConnectedUsers = async () => {
         try {

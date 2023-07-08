@@ -21,7 +21,7 @@ public class ChatTests extends SpringTest {
     final static Pattern dateLengthPattern = Pattern.compile(".{5,}");
     final static Pattern overflowPattern = Pattern.compile("^(auto|scroll)$");
     final static int TIMEOUT = 10_000;
-    final static int NUM_OF_MESSAGES = 7;
+    final static int NUM_OF_PUBLIC_MESSAGES = 7;
     final static String URL = "http://localhost:28852";
     final static String TITLE = "Chat";
 
@@ -36,6 +36,8 @@ public class ChatTests extends SpringTest {
     final static String DATE_CLASS_SELECTOR = ".date";
     final static String USERS_ID_SELECTOR = "#users";
     final static String USER_CLASS_SELECTOR = ".user";
+    final static String CHAT_WITH_ID_SELECTOR = "#chat-with";
+    final static String PUBLIC_CHAT_ID_BTN_SELECTOR = "#public-chat-btn";
     final static String INCORRECT_OR_MISSING_TITLE_TAG_ERR = "tag \"title\" should have correct text";
 
     final static String[] USERNAMES = {
@@ -43,12 +45,27 @@ public class ChatTests extends SpringTest {
             "B_USER_" + random.nextInt(1000, 10000),
             "C_USER_" + random.nextInt(1000, 10000),
     };
-    final static String[] RANDOM_MESSAGES = Stream
+
+    final static String PUBLIC_CHAT = "Public chat";
+    final static String[] RANDOM_PUBLIC_MESSAGES = Stream
             .generate(ChatTests::generateRandomMessage)
-            .limit(NUM_OF_MESSAGES)
+            .limit(NUM_OF_PUBLIC_MESSAGES)
             .toArray(String[]::new);
 
-    final static ArrayList<String[]> sentMessagesWithSenders = new ArrayList<>();
+    final static String[] RANDOM_AC_MESSAGES = Stream
+            .generate(ChatTests::generateRandomMessage)
+            .limit(2)
+            .toArray(String[]::new);
+
+    final static String[] RANDOM_BC_MESSAGES = Stream
+            .generate(ChatTests::generateRandomMessage)
+            .limit(2)
+            .toArray(String[]::new);
+
+    final static List<String[]> NO_MESSAGES = List.of();
+    final static List<String[]> sentMessagesWithSenders_PublicChat = new ArrayList<>();
+    final static List<String[]> sentMessagesWithSenders_AC_Chat = new ArrayList<>();
+    final static List<String[]> sentMessagesWithSenders_BC_Chat = new ArrayList<>();
     final List<String> loginedUsers = new ArrayList<>();
 
     Playwright playwright;
@@ -107,12 +124,15 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(0), SEND_MSG_BTN_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(0), MESSAGES_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(0), USERS_ID_SELECTOR),
+            () -> testElementShouldBeHidden(pages.get(0), CHAT_WITH_ID_SELECTOR),
+            () -> testElementShouldBeHidden(pages.get(0), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testFillInputField(pages.get(0), USERNAMES[0], INPUT_USERNAME_ID_SELECTOR),
             () -> {
                 loginedUsers.add(USERNAMES[0]);
                 return testPressBtn(pages.get(0), SEND_USERNAME_BTN_ID_SELECTOR);
             },
             () -> testUserListShouldHaveProperStructureAndContent(0),
+            () -> testChatWith(pages.get(0), PUBLIC_CHAT),
 
             // user 1
             () -> {
@@ -124,12 +144,15 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(1), SEND_MSG_BTN_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(1), MESSAGES_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(1), USERS_ID_SELECTOR),
+            () -> testElementShouldBeHidden(pages.get(1), CHAT_WITH_ID_SELECTOR),
+            () -> testElementShouldBeHidden(pages.get(1), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testFillInputField(pages.get(1), USERNAMES[1], INPUT_USERNAME_ID_SELECTOR),
             () -> {
                 loginedUsers.add(USERNAMES[1]);
                 return testPressBtn(pages.get(1), SEND_USERNAME_BTN_ID_SELECTOR);
             },
             () -> testUserListShouldHaveProperStructureAndContent(1),
+            () -> testChatWith(pages.get(1), PUBLIC_CHAT),
 
             () -> testUserListShouldHaveProperStructureAndContent(0),
 
@@ -138,46 +161,47 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(1), INPUT_USERNAME_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(0), SEND_USERNAME_BTN_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(1), SEND_USERNAME_BTN_ID_SELECTOR),
-            // message 0
-            () -> testFillInputField(pages.get(0), RANDOM_MESSAGES[0], INPUT_MSG_ID_SELECTOR),
+            // public message 0
+            () -> testFillInputField(pages.get(0), RANDOM_PUBLIC_MESSAGES[0], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[0], RANDOM_MESSAGES[0]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[0], RANDOM_PUBLIC_MESSAGES[0]});
                 return testPressBtn(pages.get(0), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
-            // message 1
-            () -> testFillInputField(pages.get(1), RANDOM_MESSAGES[1], INPUT_MSG_ID_SELECTOR),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            // public message 1
+            () -> testFillInputField(pages.get(1), RANDOM_PUBLIC_MESSAGES[1], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[1], RANDOM_MESSAGES[1]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[1], RANDOM_PUBLIC_MESSAGES[1]});
                 return testPressBtn(pages.get(1), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            // message 2
-            () -> testFillInputField(pages.get(0), RANDOM_MESSAGES[2], INPUT_MSG_ID_SELECTOR),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            // public message 2
+            () -> testFillInputField(pages.get(0), RANDOM_PUBLIC_MESSAGES[2], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[0], RANDOM_MESSAGES[2]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[0], RANDOM_PUBLIC_MESSAGES[2]});
                 return testPressBtn(pages.get(0), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
-            // message 3
-            () -> testFillInputField(pages.get(1), RANDOM_MESSAGES[3], INPUT_MSG_ID_SELECTOR),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            // public message 3
+            () -> testFillInputField(pages.get(1), RANDOM_PUBLIC_MESSAGES[3], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[1], RANDOM_MESSAGES[3]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[1], RANDOM_PUBLIC_MESSAGES[3]});
                 return testPressBtn(pages.get(1), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            // message 4
-            () -> testFillInputField(pages.get(0), RANDOM_MESSAGES[4], INPUT_MSG_ID_SELECTOR),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            // public message 4
+            () -> testFillInputField(pages.get(0), RANDOM_PUBLIC_MESSAGES[4], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[0], RANDOM_MESSAGES[4]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[0], RANDOM_PUBLIC_MESSAGES[4]});
                 return testPressBtn(pages.get(0), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+
 
             // --- TESTS WITH THREE USERS
             // user 2
@@ -189,6 +213,8 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(2), SEND_MSG_BTN_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(2), MESSAGES_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(2), USERS_ID_SELECTOR),
+            () -> testElementShouldBeHidden(pages.get(2), CHAT_WITH_ID_SELECTOR),
+            () -> testElementShouldBeHidden(pages.get(2), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testFillInputField(pages.get(2), USERNAMES[2], INPUT_USERNAME_ID_SELECTOR),
             () -> {
                 loginedUsers.add(USERNAMES[2]);
@@ -196,31 +222,144 @@ public class ChatTests extends SpringTest {
             },
 
             () -> testUserListShouldHaveProperStructureAndContent(2),
+            () -> testChatWith(pages.get(2), PUBLIC_CHAT),
             () -> testUserListShouldHaveProperStructureAndContent(1),
             () -> testUserListShouldHaveProperStructureAndContent(0),
 
             () -> testElementShouldBeHidden(pages.get(2), INPUT_USERNAME_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(2), SEND_USERNAME_BTN_ID_SELECTOR),
 
-            // message 5
-            () -> testFillInputField(pages.get(2), RANDOM_MESSAGES[5], INPUT_MSG_ID_SELECTOR),
+            // public message 5
+            () -> testFillInputField(pages.get(2), RANDOM_PUBLIC_MESSAGES[5], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[2], RANDOM_MESSAGES[5]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[2], RANDOM_PUBLIC_MESSAGES[5]});
                 return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_PublicChat),
 
-            // message 6
-            () -> testFillInputField(pages.get(2), RANDOM_MESSAGES[6], INPUT_MSG_ID_SELECTOR),
+            // --- TEST SWITCHING CHATS
+            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(0), USERNAMES[1]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), NO_MESSAGES),
+            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(0), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), NO_MESSAGES),
+            () -> testPressBtn(pages.get(0), PUBLIC_CHAT_ID_BTN_SELECTOR),
+            () -> testChatWith(pages.get(0), PUBLIC_CHAT),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(1), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
+
+            // public message 6
+            () -> testFillInputField(pages.get(2), RANDOM_PUBLIC_MESSAGES[6], INPUT_MSG_ID_SELECTOR),
             () -> {
-                sentMessagesWithSenders.add(new String[]{USERNAMES[2], RANDOM_MESSAGES[6]});
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[2], RANDOM_PUBLIC_MESSAGES[6]});
                 return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
             },
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_PublicChat),
+
+
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
+            () -> testChatWith(pages.get(1), USERNAMES[2]),
+            () -> testPressBtn(pages.get(1), PUBLIC_CHAT_ID_BTN_SELECTOR),
+            () -> testChatWith(pages.get(1), PUBLIC_CHAT),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+
+            // --- PRIVATE MESSAGES TESTS
+            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(0), USERNAMES[2]),
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(1), USERNAMES[0]),
+            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(2), USERNAMES[0]),
+
+            // private message 0
+            () -> testFillInputField(pages.get(0), RANDOM_AC_MESSAGES[0], INPUT_MSG_ID_SELECTOR),
+            () -> {
+                sentMessagesWithSenders_AC_Chat.add(new String[]{USERNAMES[0], RANDOM_AC_MESSAGES[0]});
+                return testPressBtn(pages.get(0), SEND_MSG_BTN_ID_SELECTOR);
+            },
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_AC_Chat),
+
+            // private message 1
+            () -> testPressBtn(pages.get(1), PUBLIC_CHAT_ID_BTN_SELECTOR),
+            () -> testChatWith(pages.get(1), PUBLIC_CHAT),
+
+            () -> testFillInputField(pages.get(2), RANDOM_AC_MESSAGES[1], INPUT_MSG_ID_SELECTOR),
+            () -> {
+                sentMessagesWithSenders_AC_Chat.add(new String[]{USERNAMES[2], RANDOM_AC_MESSAGES[1]});
+                return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
+            },
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_AC_Chat),
+
+            // private message 2
+            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(2), USERNAMES[1]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), NO_MESSAGES),
+
+            () -> testFillInputField(pages.get(2), RANDOM_BC_MESSAGES[0], INPUT_MSG_ID_SELECTOR),
+            () -> {
+                sentMessagesWithSenders_BC_Chat.add(new String[]{USERNAMES[2], RANDOM_BC_MESSAGES[0]});
+                return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
+            },
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
+
+            // private message 3
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(1), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
+
+            () -> testFillInputField(pages.get(2), RANDOM_BC_MESSAGES[1], INPUT_MSG_ID_SELECTOR),
+            () -> {
+                sentMessagesWithSenders_BC_Chat.add(new String[]{USERNAMES[2], RANDOM_BC_MESSAGES[1]});
+                return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
+            },
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
+
+            // recheck chats/messages
+            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(0), USERNAMES[1]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), NO_MESSAGES),
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(1), USERNAMES[0]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
+            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(2), USERNAMES[0]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_AC_Chat),
+
+            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(0), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(1), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
+            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=1"),
+            () -> testChatWith(pages.get(2), USERNAMES[1]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
+
+            () -> testPressBtn(pages.get(0), PUBLIC_CHAT_ID_BTN_SELECTOR),
+            () -> testChatWith(pages.get(0), PUBLIC_CHAT),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testPressBtn(pages.get(1), PUBLIC_CHAT_ID_BTN_SELECTOR),
+            () -> testChatWith(pages.get(1), PUBLIC_CHAT),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testPressBtn(pages.get(2), PUBLIC_CHAT_ID_BTN_SELECTOR),
+            () -> testChatWith(pages.get(2), PUBLIC_CHAT),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_PublicChat),
+
 
             // --- TEST STATE AFTER CLOSING PAGE
             () -> {
@@ -315,6 +454,15 @@ public class ChatTests extends SpringTest {
                 assertThat(messageContainerLocator.locator(DATE_CLASS_SELECTOR)).hasText(dateLengthPattern);
             }
 
+            return correct();
+        } catch (AssertionError e) {
+            return wrong(e.getMessage());
+        }
+    }
+
+    CheckResult testChatWith(Page page, String text) {
+        try {
+            assertThat(page.locator(CHAT_WITH_ID_SELECTOR)).hasText(text);
             return correct();
         } catch (AssertionError e) {
             return wrong(e.getMessage());
