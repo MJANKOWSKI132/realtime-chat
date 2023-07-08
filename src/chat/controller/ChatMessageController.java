@@ -38,12 +38,4 @@ public class ChatMessageController {
         headerAccessor.getSessionAttributes().put("userId", joinRequest.getUserId());
         return ResponseEntity.ok(new UserJoinResponseDto(joinRequest.getUserId(), joinRequest.getUsername()));
     }
-
-//    @MessageMapping("/chat.userDisconnect")
-//    @SendTo("/topic/public")
-//    public ResponseEntity<UserDisconnectResponseDto> userDisconnect(@Payload UserDisconnectRequestDto disconnectRequest,
-//                                                                    SimpMessageHeaderAccessor headerAccessor) {
-//        return ResponseEntity
-//                .ok(new UserDisconnectResponseDto(disconnectRequest.getUserId()));
-//    }
 }

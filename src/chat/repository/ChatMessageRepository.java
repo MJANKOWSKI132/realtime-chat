@@ -10,7 +10,6 @@ import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends CrudRepository<ChatMessage, Long> {
-    List<ChatMessage> findAll();
 
     @Query(value = """
         SELECT *
