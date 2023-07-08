@@ -24,8 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok)
                 throw new Error("Failed to retrieve previous messages!");
-            const prevMessages = await response.json();
-            prevMessages.forEach(addMessage);
+            const prevMessages = await response.json();;
+            for (let prevMessage of prevMessages) {
+                await addMessage(prevMessage);
+            }
         } catch (error) {
             window.alert(error.message);
         }
@@ -86,21 +88,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const addUser = user => {
         const newUserContainer = document.createElement("div");
-        newUserContainer.classList.add("user");
-        newUserContainer.setAttribute("id", `user${user.userId}`)
-        newUserContainer.addEventListener('click', e => {
+        newUserContainer.classList.add("user-container");
+        newUserContainer.setAttribute("id", `user-container${user.userId}`)
+
+        const usernameContainer = document.createElement("div");
+        usernameContainer.classList.add("user");
+        usernameContainer.setAttribute("id", `user${user.userId}`)
+        usernameContainer.textContent = user.username;
+
+        const newMessageCounter = document.createElement("div");
+        newMessageCounter.classList.add("new-message-counter");
+        newMessageCounter.setAttribute("id", `new-message-counter${user.userId}`)
+        newMessageCounter.style.visibility = "hidden";
+        newMessageCounter.textContent = "0";
+
+        newUserContainer.addEventListener('click', async e => {
             messageContainer.innerHTML = '';
             chatWithDiv.textContent = user.username;
             receivingUser = user;
             publicChatEnabled = false;
-            getPreviousMessages();
+
+            await getPreviousMessages();
+
+            const newMessageCounter = document.getElementById(`new-message-counter${user.userId}`);
+            newMessageCounter.textContent = "0";
+            newMessageCounter.style.visibility = "hidden";
         })
-        newUserContainer.textContent = user.username;
+
+        newUserContainer.appendChild(usernameContainer);
+        newUserContainer.appendChild(newMessageCounter);
+
         usersSection.appendChild(newUserContainer);
     };
 
     const removeUser = user => {
-        const userElementToRemove = document.getElementById(`user${user.userId}`);
+        const userElementToRemove = document.getElementById(`user-container${user.userId}`);
         if (userElementToRemove) {
             userElementToRemove.parentNode.removeChild(userElementToRemove);
         }
@@ -114,6 +136,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const payloadBody = JSON.parse(payload.body);
             const messageBody = payloadBody.body;
             if (messageBody.type === "NEW_MESSAGE") {
+                if (messageBody.senderUserId !== storedUser.id && messageBody.receiverUserId === storedUser.id && (publicChatEnabled || receivingUser.userId !== messageBody.senderUserId)) {
+                    const newMessageCounter = document.getElementById(`new-message-counter${messageBody.senderUserId}`);
+                    const val = parseInt(newMessageCounter.textContent);
+                    newMessageCounter.style.visibility = "visible";
+                    newMessageCounter.textContent = `${val + 1}`;
+
+                    const matchingUserContainer = document.getElementById(`user-container${messageBody.senderUserId}`);
+                    const parentNode = matchingUserContainer.parentNode;
+                    parentNode.removeChild(matchingUserContainer);
+                    parentNode.insertBefore(matchingUserContainer, parentNode.firstChild);
+                }
+                if (receivingUser && receivingUser.userId === messageBody.receiverUserId) {
+                    const matchingUserContainer = document.getElementById(`user-container${messageBody.receiverUserId}`);
+                    const parentNode = matchingUserContainer.parentNode;
+                    parentNode.removeChild(matchingUserContainer);
+                    parentNode.insertBefore(matchingUserContainer, parentNode.firstChild);
+                }
                 addMessage(payloadBody.body);
             } else if (messageBody.type === "JOIN") {
                 if (messageBody.userId !== storedUser.id) {
@@ -126,8 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const onConnected = async () => {
-            await stompClient.subscribe('/topic/public', onMessageReceived);
+        const onConnected = () => {
+            stompClient.subscribe('/topic/public', onMessageReceived);
 
             stompClient.send("/app/chat.userJoin", {}, JSON.stringify({
                 userId: storedUser.id,
