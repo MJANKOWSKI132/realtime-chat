@@ -3,10 +3,14 @@ package chat.service;
 import chat.dto.request.UserCreationRequestDto;
 import chat.dto.response.ErrorResponseDto;
 import chat.dto.response.UserCreationResponseDto;
+import chat.dto.response.UserInfoResponseDto;
 import chat.entity.ChatUser;
 import chat.repository.ChatUserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatUserService {
@@ -29,5 +33,13 @@ public class ChatUserService {
         ChatUser chatUser = new ChatUser(username);
         chatUserRepository.save(chatUser);
         return ResponseEntity.ok(UserCreationResponseDto.fromEntity(chatUser));
+    }
+
+    public List<UserInfoResponseDto> retrieveConnectedUsers() {
+        return chatUserRepository
+                .findAllByConnectedTrueOrderByCreatedAsc()
+                .stream()
+                .map(UserInfoResponseDto::fromEntity)
+                .collect(Collectors.toList());
     }
 }

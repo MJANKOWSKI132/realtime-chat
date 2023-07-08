@@ -16,6 +16,7 @@ public class ChatMessageResponseDto {
     private String message;
     private ZonedDateTime timeSent;
     private String senderUsername;
+    private ChatMessageType type = ChatMessageType.NEW_MESSAGE;
 
     public static ChatMessageResponseDto fromEntity(ChatMessage chatMessage) {
         var response = new ChatMessageResponseDto();

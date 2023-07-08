@@ -25,6 +25,7 @@ public class ChatUser {
     private String username;
     @OneToMany(mappedBy = "sender")
     private List<ChatMessage> messagesSent = new ArrayList<>();
+    private boolean connected;
 
     public ChatUser(final String username) {
         this.username = username;
@@ -33,5 +34,6 @@ public class ChatUser {
     @PrePersist
     public void prePersist() {
         this.created = ZonedDateTime.now(ZoneOffset.UTC);
+        this.connected = true;
     }
 }

@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendUsernameButton = document.getElementById("send-username-btn");
     const usernameSection = document.getElementById("username-section");
     const chatSection = document.getElementById("chat-section");
+    const usersSection = document.getElementById("users");
 
     const addMessage = messageBody => {
         const newMessageContainer = document.createElement("div");
@@ -48,17 +49,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const addUser = user => {
+        const newUserContainer = document.createElement("div");
+        newUserContainer.classList.add("user");
+        newUserContainer.setAttribute("id", `user${user.userId}`)
+        newUserContainer.textContent = user.username;
+        usersSection.appendChild(newUserContainer);
+    };
+
+    const removeUser = user => {
+        const userElementToRemove = document.getElementById(`user${user.userId}`);
+        if (userElementToRemove) {
+            userElementToRemove.parentNode.removeChild(userElementToRemove);
+        }
+    };
+
     const setupSocket = () => {
         let socket = new SockJS('/ws');
         let stompClient = Stomp.over(socket);
 
         const onMessageReceived = payload => {
             const payloadBody = JSON.parse(payload.body);
-            addMessage(payloadBody.body);
+            const messageBody = payloadBody.body;
+            console.log("messageBody: ", messageBody);
+            if (messageBody.type === "NEW_MESSAGE") {
+                addMessage(payloadBody.body);
+            } else if (messageBody.type === "JOIN") {
+                if (messageBody.userId !== storedUser.id) {
+                    addUser(messageBody)
+                }
+            } else if (messageBody.type == "DISCONNECT") {
+               if (messageBody.userId !== storedUser.id) {
+                    removeUser(messageBody);
+               }
+            }
         };
 
-        const onConnected = () => {
-            stompClient.subscribe('/topic/public', onMessageReceived);
+        const onConnected = async () => {
+            await stompClient.subscribe('/topic/public', onMessageReceived);
+
+            stompClient.send("/app/chat.userJoin", {}, JSON.stringify({
+                userId: storedUser.id,
+                username: storedUser.username
+            }));
         };
 
         const onError = error => {
@@ -95,14 +128,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const getConnectedUsers = async () => {
+        try {
+            const response = await fetch('/connected/users', {
+                method: 'GET'
+            });
+            if (!response.ok)
+                throw new Error("Failed to retrieve connected users!");
+            let connectedUsers = await response.json();
+            connectedUsers = connectedUsers.filter(connectedUser => connectedUser.userId !== storedUser.id);
+            connectedUsers.forEach(addUser);
+        } catch (error) {
+            window.alert(error.message);
+        }
+    };
+
     let storedUserStr = localStorage.getItem("user");
     let storedUser = null;
     if (storedUserStr !== null) {
         storedUser = JSON.parse(storedUserStr);
         usernameSection.style.display = "none";
         chatSection.style.display = "block";
+        usersSection.style.display = "block";
         setupSocket();
         getPreviousMessages();
+        getConnectedUsers();
     }
 
     const sendUsername = async () => {
@@ -128,8 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
             storedUser = responseBody;
             usernameSection.style.display = "none";
             chatSection.style.display = "block";
+            usersSection.style.display = "block";
             setupSocket();
             getPreviousMessages();
+            getConnectedUsers();
         } catch (error) {
             window.alert(error.message);
         }
