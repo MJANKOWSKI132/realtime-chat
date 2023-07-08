@@ -25,6 +25,9 @@ public class ChatMessage {
     @ManyToOne
     @JoinColumn(name = "sender_id")
     private ChatUser sender;
+    @ManyToOne
+    @JoinColumn(name = "receiver_id")
+    private ChatUser receiver;
 
     @PrePersist
     public void beforeSave() {

@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class ChatMessageRequestDto {
     private String message;
     private Long senderId;
+    private Long receiverId;
 }

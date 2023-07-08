@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.beans.BeanUtils;
 
 import java.time.ZonedDateTime;
+import java.util.Objects;
 
 @NoArgsConstructor
 @Data
@@ -15,7 +16,10 @@ public class ChatMessageResponseDto {
     private Long id;
     private String message;
     private ZonedDateTime timeSent;
+    private Long senderUserId;
     private String senderUsername;
+    private Long receiverUserId;
+    private String receiverUsername;
     private ChatMessageType type = ChatMessageType.NEW_MESSAGE;
 
     public static ChatMessageResponseDto fromEntity(ChatMessage chatMessage) {
@@ -24,6 +28,11 @@ public class ChatMessageResponseDto {
         response.setTimeSent(chatMessage.getTimeSent());
         response.setMessage(chatMessage.getContent());
         response.setSenderUsername(chatMessage.getSender().getUsername());
+        response.setSenderUserId(chatMessage.getSender().getId());
+        if (Objects.nonNull(chatMessage.getReceiver())) {
+            response.setReceiverUserId(chatMessage.getReceiver().getId());
+            response.setReceiverUsername(chatMessage.getReceiver().getUsername());
+        }
         return response;
     }
 }

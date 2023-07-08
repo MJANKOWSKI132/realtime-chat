@@ -11,9 +11,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatWithDiv = document.getElementById("chat-with");
 
     let publicChatEnabled = true;
+    let receivingUser = null;
+
+    const getPreviousMessages = async () => {
+        try {
+            let url = `/previous/messages?senderId=${storedUser.id}`;
+            if (receivingUser) {
+                url += `&receiverId=${receivingUser.userId}`;
+            }
+            const response = await fetch(url, {
+                method: 'GET'
+            });
+            if (!response.ok)
+                throw new Error("Failed to retrieve previous messages!");
+            const prevMessages = await response.json();
+            prevMessages.forEach(addMessage);
+        } catch (error) {
+            window.alert(error.message);
+        }
+    };
 
     const addMessage = messageBody => {
-        if (!publicChatEnabled)
+        const publicChatCondition = (publicChatEnabled && !messageBody.receiverUserId);
+        const privateChatCondition = (
+            !publicChatEnabled
+            && messageBody.receiverUserId
+            && receivingUser
+            && (
+                (messageBody.senderUserId === storedUser.id && messageBody.receiverUserId === receivingUser.userId)
+                || (messageBody.senderUserId === receivingUser.userId && messageBody.receiverUserId === storedUser.id)
+            )
+        );
+        if (!publicChatCondition && !privateChatCondition)
             return;
         const newMessageContainer = document.createElement("div");
         newMessageContainer.classList.add("message-container");
@@ -62,7 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
         newUserContainer.addEventListener('click', e => {
             messageContainer.innerHTML = '';
             chatWithDiv.textContent = user.username;
+            receivingUser = user;
             publicChatEnabled = false;
+            getPreviousMessages();
         })
         newUserContainer.textContent = user.username;
         usersSection.appendChild(newUserContainer);
@@ -117,7 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const chatMessage = {
                 message: messageInput.value,
-                senderId: storedUser.id
+                senderId: storedUser.id,
+                receiverId: receivingUser ? receivingUser.userId : null
             };
             stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
             messageInput.value = "";
@@ -135,25 +167,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const getPreviousMessages = async () => {
-        try {
-            const response = await fetch('/previous/messages', {
-                method: 'GET'
-            });
-            if (!response.ok)
-                throw new Error("Failed to retrieve previous messages!");
-            const prevMessages = await response.json();
-            prevMessages.forEach(addMessage);
-        } catch (error) {
-            window.alert(error.message);
-        }
-    };
-
     publicChatButton.addEventListener("click", _ => {
-        if (publicChatEnabled)
+        if (publicChatEnabled) {
+            receivingUser = null;
             return;
+        }
         messageContainer.innerHTML = "";
         chatWithDiv.textContent = "Public chat";
+        receivingUser = null;
         publicChatEnabled = true;
         getPreviousMessages();
     });

@@ -25,6 +25,8 @@ public class ChatUser {
     private String username;
     @OneToMany(mappedBy = "sender")
     private List<ChatMessage> messagesSent = new ArrayList<>();
+    @OneToMany(mappedBy = "receiver")
+    private List<ChatMessage> messagesReceived = new ArrayList<>();
     private boolean connected;
 
     public ChatUser(final String username) {

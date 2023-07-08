@@ -8,6 +8,7 @@ import org.junit.Before;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -21,7 +22,7 @@ public class ChatTests extends SpringTest {
     final static Pattern dateLengthPattern = Pattern.compile(".{5,}");
     final static Pattern overflowPattern = Pattern.compile("^(auto|scroll)$");
     final static int TIMEOUT = 10_000;
-    final static int NUM_OF_PUBLIC_MESSAGES = 7;
+    final static int NUM_OF_PUBLIC_MESSAGES = 8;
     final static String URL = "http://localhost:28852";
     final static String TITLE = "Chat";
 
@@ -35,7 +36,9 @@ public class ChatTests extends SpringTest {
     final static String MESSAGE_CLASS_SELECTOR = ".message";
     final static String DATE_CLASS_SELECTOR = ".date";
     final static String USERS_ID_SELECTOR = "#users";
+    final static String USER_CONTAINER_CLASS_SELECTOR = ".user-container";
     final static String USER_CLASS_SELECTOR = ".user";
+    final static String NEW_MESSAGE_COUNTER_CLASS_SELECTOR = ".new-message-counter";
     final static String CHAT_WITH_ID_SELECTOR = "#chat-with";
     final static String PUBLIC_CHAT_ID_BTN_SELECTOR = "#public-chat-btn";
     final static String INCORRECT_OR_MISSING_TITLE_TAG_ERR = "tag \"title\" should have correct text";
@@ -59,14 +62,16 @@ public class ChatTests extends SpringTest {
 
     final static String[] RANDOM_BC_MESSAGES = Stream
             .generate(ChatTests::generateRandomMessage)
-            .limit(2)
+            .limit(3)
             .toArray(String[]::new);
 
     final static List<String[]> NO_MESSAGES = List.of();
     final static List<String[]> sentMessagesWithSenders_PublicChat = new ArrayList<>();
     final static List<String[]> sentMessagesWithSenders_AC_Chat = new ArrayList<>();
     final static List<String[]> sentMessagesWithSenders_BC_Chat = new ArrayList<>();
-    final List<String> loginedUsers = new ArrayList<>();
+    final List<Map.Entry<String, Integer>> usersAndNumOfNewMessages_A_User = new ArrayList<>();
+    final List<Map.Entry<String, Integer>> usersAndNumOfNewMessages_B_User = new ArrayList<>();
+    final List<Map.Entry<String, Integer>> usersAndNumOfNewMessages_C_User = new ArrayList<>();
 
     Playwright playwright;
     Browser browser;
@@ -80,7 +85,7 @@ public class ChatTests extends SpringTest {
                 new BrowserType
                         .LaunchOptions()
                         .setHeadless(false)
-//                        .setSlowMo(15)
+//                       .setSlowMo(15)
                         .setTimeout(1000 * 120));
     }
 
@@ -128,10 +133,11 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(0), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testFillInputField(pages.get(0), USERNAMES[0], INPUT_USERNAME_ID_SELECTOR),
             () -> {
-                loginedUsers.add(USERNAMES[0]);
+                usersAndNumOfNewMessages_B_User.add(Map.entry(USERNAMES[0], 0));
+                usersAndNumOfNewMessages_C_User.add(Map.entry(USERNAMES[0], 0));
                 return testPressBtn(pages.get(0), SEND_USERNAME_BTN_ID_SELECTOR);
             },
-            () -> testUserListShouldHaveProperStructureAndContent(0),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
             () -> testChatWith(pages.get(0), PUBLIC_CHAT),
 
             // user 1
@@ -148,13 +154,14 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(1), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testFillInputField(pages.get(1), USERNAMES[1], INPUT_USERNAME_ID_SELECTOR),
             () -> {
-                loginedUsers.add(USERNAMES[1]);
+                usersAndNumOfNewMessages_A_User.add(Map.entry(USERNAMES[1], 0));
+                usersAndNumOfNewMessages_C_User.add(Map.entry(USERNAMES[1], 0));
                 return testPressBtn(pages.get(1), SEND_USERNAME_BTN_ID_SELECTOR);
             },
-            () -> testUserListShouldHaveProperStructureAndContent(1),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
             () -> testChatWith(pages.get(1), PUBLIC_CHAT),
 
-            () -> testUserListShouldHaveProperStructureAndContent(0),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
 
             // --- CHAT TESTS WITH TWO USERS
             () -> testElementShouldBeHidden(pages.get(0), INPUT_USERNAME_ID_SELECTOR),
@@ -169,6 +176,7 @@ public class ChatTests extends SpringTest {
             },
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+
             // public message 1
             () -> testFillInputField(pages.get(1), RANDOM_PUBLIC_MESSAGES[1], INPUT_MSG_ID_SELECTOR),
             () -> {
@@ -177,6 +185,7 @@ public class ChatTests extends SpringTest {
             },
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+
             // public message 2
             () -> testFillInputField(pages.get(0), RANDOM_PUBLIC_MESSAGES[2], INPUT_MSG_ID_SELECTOR),
             () -> {
@@ -217,14 +226,15 @@ public class ChatTests extends SpringTest {
             () -> testElementShouldBeHidden(pages.get(2), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testFillInputField(pages.get(2), USERNAMES[2], INPUT_USERNAME_ID_SELECTOR),
             () -> {
-                loginedUsers.add(USERNAMES[2]);
+                usersAndNumOfNewMessages_A_User.add(Map.entry(USERNAMES[2], 0));
+                usersAndNumOfNewMessages_B_User.add(Map.entry(USERNAMES[2], 0));
                 return testPressBtn(pages.get(2), SEND_USERNAME_BTN_ID_SELECTOR);
             },
 
-            () -> testUserListShouldHaveProperStructureAndContent(2),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(2), usersAndNumOfNewMessages_C_User),
             () -> testChatWith(pages.get(2), PUBLIC_CHAT),
-            () -> testUserListShouldHaveProperStructureAndContent(1),
-            () -> testUserListShouldHaveProperStructureAndContent(0),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
 
             () -> testElementShouldBeHidden(pages.get(2), INPUT_USERNAME_ID_SELECTOR),
             () -> testElementShouldBeHidden(pages.get(2), SEND_USERNAME_BTN_ID_SELECTOR),
@@ -263,6 +273,15 @@ public class ChatTests extends SpringTest {
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_PublicChat),
 
+            // public message 7
+            () -> testFillInputField(pages.get(2), RANDOM_PUBLIC_MESSAGES[7], INPUT_MSG_ID_SELECTOR),
+            () -> {
+                sentMessagesWithSenders_PublicChat.add(new String[]{USERNAMES[2], RANDOM_PUBLIC_MESSAGES[7]});
+                return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
+            },
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_PublicChat),
+
 
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
             () -> testChatWith(pages.get(1), USERNAMES[2]),
@@ -282,11 +301,16 @@ public class ChatTests extends SpringTest {
             () -> testFillInputField(pages.get(0), RANDOM_AC_MESSAGES[0], INPUT_MSG_ID_SELECTOR),
             () -> {
                 sentMessagesWithSenders_AC_Chat.add(new String[]{USERNAMES[0], RANDOM_AC_MESSAGES[0]});
+                usersAndNumOfNewMessages_A_User.add(0, usersAndNumOfNewMessages_A_User.remove(1));
                 return testPressBtn(pages.get(0), SEND_MSG_BTN_ID_SELECTOR);
             },
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_AC_Chat),
+
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(2), usersAndNumOfNewMessages_C_User),
 
             // private message 1
             () -> testPressBtn(pages.get(1), PUBLIC_CHAT_ID_BTN_SELECTOR),
@@ -301,6 +325,10 @@ public class ChatTests extends SpringTest {
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_AC_Chat),
 
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(2), usersAndNumOfNewMessages_C_User),
+
             // private message 2
             () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=1"),
             () -> testChatWith(pages.get(2), USERNAMES[1]),
@@ -309,46 +337,76 @@ public class ChatTests extends SpringTest {
             () -> testFillInputField(pages.get(2), RANDOM_BC_MESSAGES[0], INPUT_MSG_ID_SELECTOR),
             () -> {
                 sentMessagesWithSenders_BC_Chat.add(new String[]{USERNAMES[2], RANDOM_BC_MESSAGES[0]});
+                usersAndNumOfNewMessages_B_User.add(0, Map.entry(usersAndNumOfNewMessages_B_User.remove(1).getKey(), 1));
+                usersAndNumOfNewMessages_C_User.add(0, usersAndNumOfNewMessages_C_User.remove(1));
                 return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
             },
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
 
-            // private message 3
-            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=1"),
-            () -> testChatWith(pages.get(1), USERNAMES[2]),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(2), usersAndNumOfNewMessages_C_User),
 
+            // private message 3
             () -> testFillInputField(pages.get(2), RANDOM_BC_MESSAGES[1], INPUT_MSG_ID_SELECTOR),
             () -> {
                 sentMessagesWithSenders_BC_Chat.add(new String[]{USERNAMES[2], RANDOM_BC_MESSAGES[1]});
+                usersAndNumOfNewMessages_B_User.add(0, Map.entry(usersAndNumOfNewMessages_B_User.remove(0).getKey(), 2));
+                return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
+            },
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_PublicChat),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
+
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(2), usersAndNumOfNewMessages_C_User),
+
+            // private message 4
+            () -> {
+                usersAndNumOfNewMessages_B_User.add(0, Map.entry(usersAndNumOfNewMessages_B_User.remove(0).getKey(), 0));
+                return testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=0");
+            },
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testChatWith(pages.get(1), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
+
+            () -> testFillInputField(pages.get(2), RANDOM_BC_MESSAGES[2], INPUT_MSG_ID_SELECTOR),
+            () -> {
+                sentMessagesWithSenders_BC_Chat.add(new String[]{USERNAMES[2], RANDOM_BC_MESSAGES[2]});
                 return testPressBtn(pages.get(2), SEND_MSG_BTN_ID_SELECTOR);
             },
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
 
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(2), usersAndNumOfNewMessages_C_User),
+
             // recheck chats/messages
             () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(0), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(1), USERNAMES[2]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
+            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testChatWith(pages.get(2), USERNAMES[1]),
+            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
+
+            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=1"),
             () -> testChatWith(pages.get(0), USERNAMES[1]),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), NO_MESSAGES),
-            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=1"),
             () -> testChatWith(pages.get(1), USERNAMES[0]),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), NO_MESSAGES),
-            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=0"),
+            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=1"),
             () -> testChatWith(pages.get(2), USERNAMES[0]),
             () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_AC_Chat),
 
-            () -> testPressBtn(pages.get(0), USER_CLASS_SELECTOR + " >> nth=1"),
-            () -> testChatWith(pages.get(0), USERNAMES[2]),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(0), sentMessagesWithSenders_AC_Chat),
-            () -> testPressBtn(pages.get(1), USER_CLASS_SELECTOR + " >> nth=1"),
-            () -> testChatWith(pages.get(1), USERNAMES[2]),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(1), sentMessagesWithSenders_BC_Chat),
-            () -> testPressBtn(pages.get(2), USER_CLASS_SELECTOR + " >> nth=1"),
-            () -> testChatWith(pages.get(2), USERNAMES[1]),
-            () -> testUserMessagesShouldHaveProperStructureAndContent(pages.get(2), sentMessagesWithSenders_BC_Chat),
 
             () -> testPressBtn(pages.get(0), PUBLIC_CHAT_ID_BTN_SELECTOR),
             () -> testChatWith(pages.get(0), PUBLIC_CHAT),
@@ -363,16 +421,17 @@ public class ChatTests extends SpringTest {
 
             // --- TEST STATE AFTER CLOSING PAGE
             () -> {
-                loginedUsers.remove(2);
+                usersAndNumOfNewMessages_A_User.remove(0);
+                usersAndNumOfNewMessages_B_User.remove(0);
                 return closePage(pages.get(2));
             },
-            () -> testUserListShouldHaveProperStructureAndContent(0),
-            () -> testUserListShouldHaveProperStructureAndContent(1),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(1), usersAndNumOfNewMessages_B_User),
             () -> {
-                loginedUsers.remove(1);
+                usersAndNumOfNewMessages_A_User.remove(0);
                 return closePage(pages.get(1));
             },
-            () -> testUserListShouldHaveProperStructureAndContent(0),
+            () -> testUserListShouldHaveProperStructureAndContent(pages.get(0), usersAndNumOfNewMessages_A_User),
     };
 
     CheckResult testShouldContainProperTitle(Page page, String title) {
@@ -407,21 +466,28 @@ public class ChatTests extends SpringTest {
         }
     }
 
-    CheckResult testUserListShouldHaveProperStructureAndContent(int pageAndUserIndex) {
-        int numOfLoginedUsersExceptCurrent = loginedUsers.size() - 1;
-        Locator usersLocator = pages.get(pageAndUserIndex).locator(USERS_ID_SELECTOR);
-        Locator userLocator = usersLocator.locator(USER_CLASS_SELECTOR);
+    CheckResult testUserListShouldHaveProperStructureAndContent(Page page, List<Map.Entry<String, Integer>> usersAndNumOfNewMessages) {
+        Locator usersLocator = page.locator(USERS_ID_SELECTOR);
+        Locator userContainersLocator = usersLocator.locator(USER_CONTAINER_CLASS_SELECTOR);
 
         try {
             assertThat(usersLocator).hasCSS("overflow-y", overflowPattern);
-            assertThat(userLocator).hasCount(numOfLoginedUsersExceptCurrent);
+            assertThat(userContainersLocator).hasCount(usersAndNumOfNewMessages.size());
 
-            for (int i = 0, j = 0; i < numOfLoginedUsersExceptCurrent; i++, j++) {
-                if (i == pageAndUserIndex) {
-                    j++;
+            for (int i = 0; i < usersAndNumOfNewMessages.size(); i++) {
+
+                Locator userContainerLocator = userContainersLocator.nth(i);
+                assertThat(userContainerLocator.locator(USER_CLASS_SELECTOR)).isVisible();
+                assertThat(userContainerLocator.locator(USER_CLASS_SELECTOR)).hasCount(1);
+                assertThat(userContainerLocator.locator(USER_CLASS_SELECTOR)).hasText(usersAndNumOfNewMessages.get(i).getKey());
+
+                if (usersAndNumOfNewMessages.get(i).getValue() > 0) {
+                    assertThat(userContainerLocator.locator(NEW_MESSAGE_COUNTER_CLASS_SELECTOR)).isVisible();
+                    assertThat(userContainerLocator.locator(NEW_MESSAGE_COUNTER_CLASS_SELECTOR)).hasCount(1);
+                    assertThat(userContainerLocator.locator(NEW_MESSAGE_COUNTER_CLASS_SELECTOR)).hasText(String.valueOf(usersAndNumOfNewMessages.get(i).getValue()));
+                } else {
+                    assertThat(userContainerLocator.locator(NEW_MESSAGE_COUNTER_CLASS_SELECTOR)).not().isVisible();
                 }
-                assertThat(userLocator.nth(i)).isVisible();
-                assertThat(userLocator.nth(i)).hasText(loginedUsers.get(j));
             }
 
             return correct();
