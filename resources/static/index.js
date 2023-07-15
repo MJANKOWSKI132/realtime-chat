@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginButton = document.getElementById("login-btn");
     const registerButton = document.getElementById("register-btn");
     const backFromUsernamePasswordSectionButton = document.getElementById("back-from-username-section-btn");
+    const logoutButton = document.getElementById("logout-btn");
+
 
     let loginProcessStarted = false;
     let registerProcessStarted = false;
@@ -33,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loginButton.addEventListener("click", _ => {
         loginProcessStarted = true;
+        registerProcessStarted = false;
         usernameSection.style.display = "flex";
         loginRegisterScreen.style.display = "none";
         sendUsernameButton.textContent = "Login";
@@ -40,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     registerButton.addEventListener("click", _ => {
         registerProcessStarted = true;
+        loginProcessStarted = false;
         usernameSection.style.display = "flex";
         loginRegisterScreen.style.display = "none";
         sendUsernameButton.textContent = "Register";
@@ -60,7 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok)
                 throw new Error("Failed to retrieve previous messages!");
-            const prevMessages = await response.json();;
+            const prevMessages = await response.json();
+            messageContainer.innerHTML = '';
             for (let prevMessage of prevMessages) {
                 await addMessage(prevMessage);
             }
@@ -68,6 +73,29 @@ document.addEventListener('DOMContentLoaded', () => {
             window.alert(error.message);
         }
     };
+
+    logoutButton.addEventListener("click", async _ => {
+        const confirm = window.confirm("Are you sure you want to logout?");
+        if (!confirm)
+            return;
+        try {
+            const response = await fetch('/user/logout', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${storedUser.token}`
+                }
+            })
+            const responseBody = await response.json();
+            if (!response.ok)
+                throw new Error(responseBody.message || "Failed to logout!");
+            localStorage.removeItem("user");
+            chatSection.style.display = "none";
+            usersSection.style.display = "none";
+            loginRegisterScreen.style.display = "flex";
+        } catch (error) {
+            window.alert(error.message);
+        }
+    })
 
     const addMessage = messageBody => {
         const publicChatCondition = (publicChatEnabled && !messageBody.receiverUserId);
@@ -340,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getConnectedUsers();
                 usernameInput.value = "";
                 passwordInput.value = "";
+                messageInput.focus();
             } else if (registerProcessStarted) {
                 const response = await fetch("/user/register", {
                     method: 'POST',
@@ -361,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loginRegisterScreen.style.display = "flex"
                 usernameInput.value = "";
                 passwordInput.value = "";
+                window.alert(`Successfully registered the user with username ${responseBody.username}`);
             }
         } catch (error) {
             window.alert(error.message);

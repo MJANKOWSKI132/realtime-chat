@@ -4,6 +4,7 @@ import chat.dto.request.LoginRequestDto;
 import chat.dto.request.UserCreationRequestDto;
 import chat.dto.response.ErrorResponseDto;
 import chat.dto.response.JwtResponseDto;
+import chat.dto.response.SuccessResponseDto;
 import chat.dto.response.UserCreationResponseDto;
 import chat.dto.response.UserInfoResponseDto;
 import chat.entity.ChatUser;
@@ -174,6 +175,6 @@ public class ChatUserService {
         ChatUser chatUser = optionalChatUser.get();
         chatUser.setConnected(false);
         chatUserRepository.save(chatUser);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(SuccessResponseDto.fromMessage("Logout success"));
     }
 }
