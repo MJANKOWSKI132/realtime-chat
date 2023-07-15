@@ -14,12 +14,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginRegisterScreen = document.getElementById("login-register-screen");
     const loginButton = document.getElementById("login-btn");
     const registerButton = document.getElementById("register-btn");
+    const backFromUsernamePasswordSectionButton = document.getElementById("back-from-username-section-btn");
 
     let loginProcessStarted = false;
     let registerProcessStarted = false;
 
     let publicChatEnabled = true;
     let receivingUser = null;
+
+    backFromUsernamePasswordSectionButton.addEventListener("click", _ => {
+        loginProcessStarted = false;
+        registerProcessStarted = false;
+        usernameSection.style.display = "none";
+        loginRegisterScreen.style.display = "flex";
+        usernameInput.value = "";
+        passwordInput.value = "";
+    });
 
     loginButton.addEventListener("click", _ => {
         loginProcessStarted = true;
