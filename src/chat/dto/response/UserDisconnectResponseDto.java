@@ -1,5 +1,6 @@
 package chat.dto.response;
 
+import chat.enums.ChatMessageType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

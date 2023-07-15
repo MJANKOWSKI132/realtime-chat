@@ -1,10 +1,10 @@
 package chat.dto.response;
 
 import chat.entity.ChatMessage;
+import chat.enums.ChatMessageType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.beans.BeanUtils;
 
 import java.time.ZonedDateTime;
 import java.util.Objects;

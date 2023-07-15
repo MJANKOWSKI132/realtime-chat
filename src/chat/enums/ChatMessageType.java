@@ -1,4 +1,4 @@
-package chat.dto.response;
+package chat.enums;
 
 public enum ChatMessageType {
     JOIN,
