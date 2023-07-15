@@ -19,6 +19,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -125,6 +126,24 @@ public class ChatUserService {
                         loginRequest.getPassword()
                 )
         );
+        Optional<ChatUser> matchingChatUser = chatUserRepository.findByUsername(loginRequest.getUsername());
+        if (matchingChatUser.isEmpty()) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ErrorResponseDto.fromMessage(
+                            String.format("No such user with username: %s exists", loginRequest.getUsername())
+                    ));
+        }
+        ChatUser chatUser = matchingChatUser.get();
+        if (chatUser.isConnected()) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ErrorResponseDto.fromMessage(
+                            String.format("The user with username: %s is already logged in", loginRequest.getUsername())
+                    ));
+        }
+        chatUser.setConnected(true);
+        chatUserRepository.save(chatUser);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
@@ -141,5 +160,20 @@ public class ChatUserService {
                         roles
                 )
         );
+    }
+
+    public ResponseEntity<?> logout(UserDetails userDetails) {
+        Optional<ChatUser> optionalChatUser = chatUserRepository.findByUsername(userDetails.getUsername());
+        if (optionalChatUser.isEmpty()) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(ErrorResponseDto.fromMessage(
+                            String.format("No such user exists with username: %s", userDetails.getUsername())
+                    ));
+        }
+        ChatUser chatUser = optionalChatUser.get();
+        chatUser.setConnected(false);
+        chatUserRepository.save(chatUser);
+        return ResponseEntity.ok().build();
     }
 }

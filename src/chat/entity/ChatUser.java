@@ -48,6 +48,5 @@ public class ChatUser {
     @PrePersist
     public void prePersist() {
         this.created = ZonedDateTime.now(ZoneOffset.UTC);
-        this.connected = true;
     }
 }

@@ -9,7 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ChatMessageRequestDto {
     private String message;
-    // TODO: use senderId extracted from JWT token
-    private Long senderId;
     private Long receiverId;
 }

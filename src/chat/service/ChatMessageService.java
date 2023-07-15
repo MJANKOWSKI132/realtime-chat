@@ -7,6 +7,7 @@ import chat.entity.ChatMessage;
 import chat.entity.ChatUser;
 import chat.repository.ChatMessageRepository;
 import chat.repository.ChatUserRepository;
+import chat.security.jwt.JwtUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,18 +25,19 @@ public class ChatMessageService {
     private final ChatUserRepository chatUserRepository;
 
     public ChatMessageService(final ChatMessageRepository chatMessageRepository,
-                              final ChatUserRepository chatUserRepository) {
+                              final ChatUserRepository chatUserRepository,
+                              final JwtUtils jwtUtils) {
         this.chatMessageRepository = chatMessageRepository;
         this.chatUserRepository = chatUserRepository;
     }
 
-    public ResponseEntity<?> sendMessage(ChatMessageRequestDto messageRequest) {
-        var matchingSender = chatUserRepository.findById(messageRequest.getSenderId());
+    public ResponseEntity<?> sendMessage(ChatMessageRequestDto messageRequest, String username) {
+        var matchingSender = chatUserRepository.findByUsername(username);
         if (matchingSender.isEmpty()) {
             return ResponseEntity
                     .status(HttpStatus.NOT_FOUND)
                     .body(ErrorResponseDto.fromMessage(
-                            String.format("Error, no such user with ID: %s exists", messageRequest.getSenderId())
+                            String.format("Error, no such user with username: %s exists", username)
                     ));
         }
         Optional<ChatUser> matchingReceiver = Objects.nonNull(messageRequest.getReceiverId())

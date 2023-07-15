@@ -31,7 +31,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             Optional<String> optionalJwt = parseJwt(request);
-            optionalJwt.ifPresentOrElse(jwt -> {
+            optionalJwt.ifPresent(jwt -> {
                 String username = jwtUtils.getUsernameFromJwtToken(jwt);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -41,8 +41,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            }, () -> {
-                log.error("Could not parse JWT token from request headers");
             });
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());

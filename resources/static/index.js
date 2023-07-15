@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageInput = document.getElementById("input-msg");
     const messageContainer = document.getElementById("messages");
     const usernameInput = document.getElementById("input-username");
+    const passwordInput = document.getElementById("input-password");
     const sendUsernameButton = document.getElementById("send-username-btn");
     const usernameSection = document.getElementById("username-section");
     const chatSection = document.getElementById("chat-section");
@@ -10,8 +11,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const publicChatButton = document.getElementById("public-chat-btn");
     const chatWithDiv = document.getElementById("chat-with");
 
+    const loginRegisterScreen = document.getElementById("login-register-screen");
+    const loginButton = document.getElementById("login-btn");
+    const registerButton = document.getElementById("register-btn");
+
+    let loginProcessStarted = false;
+    let registerProcessStarted = false;
+
     let publicChatEnabled = true;
     let receivingUser = null;
+
+    loginButton.addEventListener("click", _ => {
+        loginProcessStarted = true;
+        usernameSection.style.display = "flex";
+        loginRegisterScreen.style.display = "none";
+        sendUsernameButton.textContent = "Login";
+        usernameInput.focus();
+    });
+    registerButton.addEventListener("click", _ => {
+        registerProcessStarted = true;
+        usernameSection.style.display = "flex";
+        loginRegisterScreen.style.display = "none";
+        sendUsernameButton.textContent = "Register";
+        usernameInput.focus();
+    });
 
     const getPreviousMessages = async () => {
         try {
@@ -20,7 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 url += `&receiverId=${receivingUser.userId}`;
             }
             const response = await fetch(url, {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${storedUser.token}`
+                },
             });
             if (!response.ok)
                 throw new Error("Failed to retrieve previous messages!");
@@ -134,6 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const onMessageReceived = payload => {
             const payloadBody = JSON.parse(payload.body);
+            if (payloadBody.statusCodeValue < 200 || payloadBody.statusCodeValue > 299) {
+                window.alert("Cannot receive messages at this moment!");
+                chatSection.style.display = "none";
+                usersSection.style.display = "none";
+                loginRegisterScreen.style.display = "flex";
+                return;
+            }
             const messageBody = payloadBody.body;
             if (messageBody.type === "NEW_MESSAGE") {
                 if (messageBody.senderUserId !== storedUser.id && messageBody.receiverUserId === storedUser.id && (publicChatEnabled || receivingUser.userId !== messageBody.senderUserId)) {
@@ -168,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const onConnected = () => {
             stompClient.subscribe('/topic/public', onMessageReceived);
 
-            stompClient.send("/app/chat.userJoin", {}, JSON.stringify({
+            stompClient.send("/app/chat.userJoin", {'Authorization': `Bearer ${storedUser.token}`}, JSON.stringify({
                 userId: storedUser.id,
                 username: storedUser.username
             }));
@@ -187,10 +220,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const chatMessage = {
                 message: messageInput.value,
-                senderId: storedUser.id,
                 receiverId: receivingUser ? receivingUser.userId : null
             };
-            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+            stompClient.send("/app/chat.sendMessage", {'Authorization': `Bearer ${storedUser.token}`}, JSON.stringify(chatMessage));
             messageInput.value = "";
         };
 
@@ -221,7 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const getConnectedUsers = async () => {
         try {
             const response = await fetch('/connected/users', {
-                method: 'GET'
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${storedUser.token}`
+                },
             });
             if (!response.ok)
                 throw new Error("Failed to retrieve connected users!");
@@ -237,12 +272,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let storedUser = null;
     if (storedUserStr !== null) {
         storedUser = JSON.parse(storedUserStr);
-        usernameSection.style.display = "none";
-        chatSection.style.display = "block";
-        usersSection.style.display = "block";
-        setupSocket();
-        getPreviousMessages();
-        getConnectedUsers();
+        if (!storedUser.token)
+            return;
+        fetch('/ping', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${storedUser.token}`
+            }
+        })
+        .then(res => {
+            if (!res.ok) {
+                localStorage.removeItem("user");
+                return;
+            }
+            usernameSection.style.display = "none";
+            chatSection.style.display = "block";
+            usersSection.style.display = "block";
+            loginRegisterScreen.style.display = "none";
+            setupSocket();
+            getPreviousMessages();
+            getConnectedUsers();
+        })
     }
 
     const sendUsername = async () => {
@@ -251,27 +301,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.alert("Username must not be empty!");
                 return;
             }
-            const response = await fetch("/user/register", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: usernameInput.value
-                })
-            })
-            if (!response.ok) {
-                throw new Error("Response not ok!");
+            if (!passwordInput || passwordInput.value === "" || passwordInput.value.trim() === "") {
+                window.alert("Password input must not be empty!");
+                return;
             }
-            const responseBody = await response.json();
-            //localStorage.setItem("user", JSON.stringify(responseBody));
-            storedUser = responseBody;
-            usernameSection.style.display = "none";
-            chatSection.style.display = "block";
-            usersSection.style.display = "block";
-            setupSocket();
-            getPreviousMessages();
-            getConnectedUsers();
+            if (loginProcessStarted) {
+                const response = await fetch("/user/signin", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: usernameInput.value,
+                        password: passwordInput.value
+                    })
+                })
+                const responseBody = await response.json();
+                if (!response.ok) {
+                    throw new Error(responseBody.message || "Failed to login!");
+                }
+                localStorage.setItem("user", JSON.stringify(responseBody));
+                storedUser = responseBody;
+                usernameSection.style.display = "none";
+                chatSection.style.display = "block";
+                usersSection.style.display = "block";
+                setupSocket();
+                getPreviousMessages();
+                getConnectedUsers();
+                usernameInput.value = "";
+                passwordInput.value = "";
+            } else if (registerProcessStarted) {
+                const response = await fetch("/user/register", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: usernameInput.value,
+                        password: passwordInput.value
+                    })
+                })
+                const responseBody = await response.json();
+                if (!response.ok) {
+                    throw new Error(responseBody.message || "Failed to register!");
+                }
+                usernameSection.style.display = "none";
+                loginProcessStarted = true;
+                registerProcessStarted = false;
+                loginRegisterScreen.style.display = "flex"
+                usernameInput.value = "";
+                passwordInput.value = "";
+            }
         } catch (error) {
             window.alert(error.message);
         }
