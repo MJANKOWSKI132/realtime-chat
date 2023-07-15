@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let publicChatEnabled = true;
     let receivingUser = null;
 
+    let stompClient;
+
     backFromUsernamePasswordSectionButton.addEventListener("click", _ => {
         loginProcessStarted = false;
         registerProcessStarted = false;
@@ -92,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chatSection.style.display = "none";
             usersSection.style.display = "none";
             loginRegisterScreen.style.display = "flex";
+            stompClient.disconnect(() => console.log("STOMP client disconnected!"))
         } catch (error) {
             window.alert(error.message);
         }
@@ -194,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const setupSocket = () => {
         let socket = new SockJS('/ws');
-        let stompClient = Stomp.over(socket);
+        stompClient = Stomp.over(socket);
 
         const onMessageReceived = payload => {
             const payloadBody = JSON.parse(payload.body);
@@ -250,31 +253,31 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         stompClient.connect({}, onConnected, onError);
-
-        const messageFunc = () => {
-            if (!messageInput || messageInput.value === "") {
-                window.alert("Message cannot be empty!");
-                return;
-            }
-            const chatMessage = {
-                message: messageInput.value,
-                receiverId: receivingUser ? receivingUser.userId : null
-            };
-            stompClient.send("/app/chat.sendMessage", {'Authorization': `Bearer ${storedUser.token}`}, JSON.stringify(chatMessage));
-            messageInput.value = "";
-        };
-
-        sendMessageButton.addEventListener('click', _ => {
-            messageFunc();
-        });
-
-        messageInput.addEventListener("keydown", event => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                messageFunc();
-            }
-        });
     };
+
+    const messageFunc = () => {
+        if (!messageInput || messageInput.value === "") {
+            window.alert("Message cannot be empty!");
+            return;
+        }
+        const chatMessage = {
+            message: messageInput.value,
+            receiverId: receivingUser ? receivingUser.userId : null
+        };
+        stompClient.send("/app/chat.sendMessage", {'Authorization': `Bearer ${storedUser.token}`}, JSON.stringify(chatMessage));
+        messageInput.value = "";
+    };
+
+    sendMessageButton.addEventListener('click', _ => {
+        messageFunc();
+    });
+
+    messageInput.addEventListener("keydown", event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            messageFunc();
+        }
+    });
 
     publicChatButton.addEventListener("click", _ => {
         if (publicChatEnabled) {
